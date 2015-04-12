@@ -12,12 +12,14 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
 from django.utils.translation import ugettext as _
 from django.http import HttpResponsePermanentRedirect
+from django.http import HttpResponseForbidden
 
 from djconfig import config
 
 from ..utils.ratelimit.decorators import ratelimit
 from ..utils.user.email import send_activation_email, send_email_change_email
 from ..utils.user.tokens import UserActivationTokenGenerator, UserEmailChangeTokenGenerator
+from ..utils.user.validation import is_allowed_email
 from ..utils.paginator import yt_paginate
 
 from ..models.topic import Topic
@@ -72,6 +74,8 @@ def register(request):
         form = RegistrationForm(data=request.POST)
 
         if not request.is_limited and form.is_valid():
+            if not is_allowed_email(form.cleaned_data['email']):
+                return HttpResponseForbidden("Email not allowed")
             user = form.save()
             send_activation_email(request, user)
             messages.info(request, _("We have sent you an email so you can activate your account!"))

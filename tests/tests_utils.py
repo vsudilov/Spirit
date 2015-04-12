@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import datetime
 import json
 import os
+import copy
 
 from django.core.cache import cache
 from django.test import TestCase, RequestFactory
@@ -30,6 +31,7 @@ from spirit.utils.decorators import moderator_required, administrator_required
 from spirit.utils.user.tokens import UserActivationTokenGenerator, UserEmailChangeTokenGenerator
 from spirit.utils.user.email import send_activation_email, send_email_change_email, sender
 from spirit.utils.user import email
+from spirit.utils.user.validation import is_allowed_email
 
 from spirit import utils as spirit_utils
 from spirit.templatetags.tags.utils import time as ttags_utils
@@ -96,6 +98,29 @@ class UtilsTests(TestCase):
         os.rmdir(sub_path)
         os.rmdir(path)
 
+
+class TestValidation(TestCase):
+    
+    def setUp(self):
+        self.old_settings = copy.deepcopy(settings)
+    
+    def tearDown(self):
+        settings = self.old_settings
+
+    def test_is_allowed_email(self):
+        """
+        Test that emails are properly filtered via utils.is_allowed_email
+        """
+
+        # Test that not having settings.ALLOWED_EMAILS automatically returns True for any email
+        if hasattr(settings,'ALLOWED_EMAILS'):
+            del settings.ALLOWED_EMAILS
+        self.assertTrue(is_allowed_email('foo'))
+
+        settings.ALLOWED_EMAILS = ['foo@foo.com','.+@bar.com']
+        self.assertFalse(is_allowed_email('foo2@foo.com'))
+        self.assertTrue(is_allowed_email('foo@foo.com'))
+        self.assertTrue(is_allowed_email('faz@bar.com'))
 
 # Mock out datetime in some tests so they don't fail occasionally when they
 # run too slow. Use a fixed datetime for datetime.now(). DST change in
